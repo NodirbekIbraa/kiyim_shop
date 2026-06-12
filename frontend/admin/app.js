@@ -18,7 +18,7 @@ const ICON = {
 const NAV = [
   ['dashboard','Dashboard','dashboard.html'],
   ['orders','Buyurtmalar','orders.html'],
-  ['customers','Mijozlar','customers.html'],
+  ['customers','Mijoz','customers.html'],
   ['products','Mahsulotlar','products.html'],
   ['reports','Hisobotlar','reports.html'],
 ];
