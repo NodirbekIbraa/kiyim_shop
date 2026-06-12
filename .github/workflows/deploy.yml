@@ -47,5 +47,6 @@ jobs:
             cd ~/kiyim_shop
             git pull origin main
             docker compose down
+            docker rm -f vestra_db vestra_app vestra_nginx 2>/dev/null || true
             docker compose up --build -d
             docker image prune -f
