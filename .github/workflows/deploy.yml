@@ -46,5 +46,6 @@ jobs:
             fi
             cd ~/kiyim_shop
             git pull origin main
+            docker compose down
             docker compose up --build -d
             docker image prune -f
