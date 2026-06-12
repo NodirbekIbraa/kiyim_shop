@@ -32,7 +32,7 @@ function mountNav(active) {
   <header class="topnav">
     <div class="nav-brand">
       <div class="brand-mark">N</div>
-      <div class="brand-word">NODIR<span>Aurora Console</span></div>
+      <div class="brand-word">VESTRA<span>Aurora Console</span></div>
     </div>
     <nav class="nav-links">${links}</nav>
     <div class="nav-user">
