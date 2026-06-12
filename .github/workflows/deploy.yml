@@ -41,6 +41,9 @@ jobs:
           username: ubuntu
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
+            if [ ! -d ~/kiyim_shop ]; then
+              git clone https://github.com/NodirbekIbraa/kiyim_shop.git ~/kiyim_shop
+            fi
             cd ~/kiyim_shop
             git pull origin main
             docker compose up --build -d
