@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>VESTRA · Dashboard</title>
+  <link rel="stylesheet" href="main.css"/>
+</head>
+<body>
+  <main class="wrap">
+    <div class="page-head">
+      <div>
+        <div class="page-title">Boshqaruv paneli</div>
+        <div class="page-sub">Ulgurji savdo — umumiy ko'rinish</div>
+      </div>
+      <div class="head-tools">
+        <button class="btn btn-ghost btn-sm" onclick="load()">↻ Yangilash</button>
+      </div>
+    </div>
+
+    <div class="bento">
+      <!-- HERO -->
+      <section class="tile hero c6">
+        <div>
+          <div class="tile-label">Umumiy daromad</div>
+          <div class="tile-num" id="kRevenue">—</div>
+          <div class="hero-spark" id="sparkEl"></div>
+        </div>
+        <div class="hero-mini">
+          <div><span class="hm-k">Buyurtmalar</span><span class="hm-v" id="kOrders">—</span></div>
+          <div><span class="hm-k">O'rtacha chek</span><span class="hm-v" id="kAvg">—</span></div>
+          <div><span class="hm-k">Yetkazilgan</span><span class="hm-v" id="kDelivered">—</span></div>
+        </div>
+      </section>
+
+      <!-- STATS -->
+      <section class="tile c3">
+        <div class="tile-ico">◉</div>
+        <div class="tile-label">Faol mijozlar</div>
+        <div class="tile-num" id="kCustomers">—</div>
+        <div class="tile-foot" id="kProducts">—</div>
+      </section>
+      <section class="tile c3">
+        <div class="tile-ico">⏳</div>
+        <div class="tile-label">Kutilayotgan</div>
+        <div class="tile-num" id="kPending">—</div>
+        <div class="tile-foot">buyurtma jarayonda</div>
+      </section>
+
+      <!-- DONUT -->
+      <section class="tile c6">
+        <div class="tile-h"><h3>Buyurtmalar holati</h3></div>
+        <div class="donut-wrap" id="donutEl"><span class="text-muted" style="font-size:.8rem">Yuklanmoqda…</span></div>
+      </section>
+      <!-- BAR (sits beside donut on wide screens via flow) -->
+      <section class="tile c6">
+        <div class="tile-h"><h3>Oylik daromad</h3><span class="sub">so'nggi 6 oy</span></div>
+        <div id="barEl"><span class="text-muted" style="font-size:.8rem">Yuklanmoqda…</span></div>
+      </section>
+
+      <!-- TOP CUSTOMERS -->
+      <section class="tile c5">
+        <div class="tile-h"><h3>Top mijozlar</h3><span class="sub">eng ko'p xarid</span></div>
+        <div id="topCustEl"><span class="text-muted" style="font-size:.8rem">Yuklanmoqda…</span></div>
+      </section>
+      <!-- ACTIVITY -->
+      <section class="tile c7">
+        <div class="tile-h"><h3>Faollik tarixi</h3></div>
+        <div class="feed" id="feedEl"></div>
+      </section>
+
+      <!-- RECENT ORDERS -->
+      <section class="panel c12">
+        <div class="panel-h"><h3>So'nggi buyurtmalar</h3><a class="btn btn-ghost btn-sm" href="orders.html">Barchasi →</a></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Mijoz</th><th>Summa</th><th>Holat</th><th>Sana</th></tr></thead>
+            <tbody id="recentEl"><tr><td colspan="5" class="empty-state">Yuklanmoqda…</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script src="app.js"></script>
+  <script>
+  mountNav('dashboard');
+
+  function sparkline(months){
+    if(!months.length) return '';
+    const vals=months.map(m=>parseFloat(m.revenue));
+    const max=Math.max(...vals), min=Math.min(...vals), W=320,H=64,P=4;
+    const pts=vals.map((v,i)=>{
+      const x=P+i*((W-2*P)/Math.max(vals.length-1,1));
+      const y=H-P-((v-min)/((max-min)||1))*(H-2*P);
+      return [x,y];
+    });
+    const line=pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
+    const area=line+` L ${pts[pts.length-1][0].toFixed(1)} ${H} L ${pts[0][0].toFixed(1)} ${H} Z`;
+    return `<svg width="100%" height="64" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+      <defs><linearGradient id="sg" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#34D399" stop-opacity=".45"/><stop offset="1" stop-color="#34D399" stop-opacity="0"/></linearGradient></defs>
+      <path d="${area}" fill="url(#sg)"/>
+      <path d="${line}" fill="none" stroke="#34D399" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+    </svg>`;
+  }
+
+  function donut(statuses){
+    const total=statuses.reduce((s,r)=>s+ +r.count,0)||1;
+    const R=46,CX=58,CY=58,SW=13,C=2*Math.PI*R; let paths='',off=0;
+    statuses.forEach(s=>{ const pct=(+s.count)/total,dash=pct*C,col=STATUS_COLORS[s.status]||'#888';
+      paths+=`<circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="${col}" stroke-width="${SW}" stroke-linecap="round" stroke-dasharray="${dash} ${C-dash}" stroke-dashoffset="${-off*C}" transform="rotate(-90 ${CX} ${CY})"/>`; off+=pct; });
+    const legend=statuses.map(s=>{ const col=STATUS_COLORS[s.status]||'#888',pct=Math.round((+s.count)/total*100);
+      return `<div class="legend-row"><span class="legend-l"><span class="legend-dot" style="background:${col}"></span>${STATUS_UZ[s.status]||s.status}</span><span class="legend-r">${s.count} · ${pct}%</span></div>`; }).join('');
+    return `<svg width="116" height="116" viewBox="0 0 116 116">
+        <circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="${SW}"/>${paths}
+        <text x="${CX}" y="${CY+2}" text-anchor="middle" fill="#ECE9F7" font-size="20" font-family="Space Mono" font-weight="700">${total}</text>
+        <text x="${CX}" y="${CY+17}" text-anchor="middle" fill="#6E6890" font-size="8" font-family="DM Sans" letter-spacing="1">JAMI</text>
+      </svg><div class="legend">${legend}</div>`;
+  }
+
+  function bars(months){
+    if(!months.length) return '<span class="text-muted">Ma\'lumot yo\'q</span>';
+    const max=Math.max(...months.map(m=>+m.revenue));
+    return '<div class="bar-chart">'+months.map(m=>{
+      const h=max>0?Math.max(+m.revenue/max*100,3):3;
+      return `<div class="bar-col"><div class="bar-fill" style="height:${h}%"><div class="bar-tip">${m.month}: ${money(m.revenue)}</div></div><div class="bar-lbl">${m.month}</div></div>`;
+    }).join('')+'</div>';
+  }
+
+  async function load(){
+    const r=await api('/api/dashboard/summary'); if(!r) return;
+    const d=await r.json(), t=d.totals;
+    kRevenue.textContent=money(t.total_revenue);
+    kOrders.textContent=t.total_orders;
+    kAvg.textContent=money(t.avg_order);
+    kDelivered.textContent=t.delivered_orders;
+    kCustomers.textContent=t.customers;
+    kProducts.textContent=t.products+' ta mahsulot katalogda';
+    kPending.textContent=t.pending_orders;
+
+    sparkEl.innerHTML=sparkline(d.monthly);
+    donutEl.innerHTML=donut(d.statusBreakdown);
+    barEl.innerHTML=bars(d.monthly);
+
+    const maxS=Math.max(...d.topCustomers.map(c=>+c.spent))||1;
+    topCustEl.innerHTML=d.topCustomers.map((c,i)=>`
+      <div class="rank-row">
+        <div class="rank-no ${i===0?'top':''}">${i+1}</div>
+        <div class="rank-mid"><div class="rank-name">${esc(c.company_name)}</div>
+          <div class="rank-bar"><i style="width:${(+c.spent/maxS*100).toFixed(0)}%"></i></div></div>
+        <div class="rank-val">${money(c.spent)}</div>
+      </div>`).join('');
+
+    feedEl.innerHTML=d.recentActivity.map(a=>`
+      <div class="feed-item"><div class="feed-ico">✦</div>
+        <div><div class="feed-text">${esc(a.action)}</div><div class="feed-time">${timeAgo(a.created_at)}</div></div></div>`).join('');
+
+    recentEl.innerHTML=d.recentOrders.map(o=>`
+      <tr><td class="id-pill">#${o.id}</td>
+        <td style="font-weight:500">${esc(o.customer_name)||'—'}</td>
+        <td class="font-mono">${money(o.total_amount)}</td>
+        <td><span class="badge ${o.status}">${STATUS_UZ[o.status]||o.status}</span></td>
+        <td class="text-muted">${dateShort(o.created_at)}</td></tr>`).join('');
+  }
+  load();
+  </script>
+</body>
+</html>

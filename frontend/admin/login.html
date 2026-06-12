@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>VESTRA CRM — Kirish</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'DM Sans',sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;
+      background:
+        radial-gradient(700px 500px at 15% 10%, rgba(124,58,237,.35), transparent 60%),
+        radial-gradient(600px 500px at 90% 90%, rgba(16,185,129,.22), transparent 55%),
+        linear-gradient(135deg,#1B1430 0%,#241B40 55%,#160F26 100%);}
+    .login-box{width:100%;max-width:400px;padding:1rem;position:relative}
+    .login-logo{text-align:center;margin-bottom:2rem}
+    .logo-icon{font-family:'Sora',sans-serif;width:60px;height:60px;background:linear-gradient(135deg,#7C3AED 0%,#10B981 100%);border-radius:16px;display:inline-flex;align-items:center;justify-content:center;font-size:1.7rem;font-weight:800;color:#fff;margin-bottom:.85rem;box-shadow:0 10px 30px rgba(124,58,237,.45)}
+    .logo-name{font-family:'Sora',sans-serif;font-size:1.55rem;font-weight:800;color:#fff;letter-spacing:.18em}
+    .logo-sub{font-size:.72rem;color:#9A8FC0;letter-spacing:.14em;text-transform:uppercase;margin-top:.25rem}
+    .login-card{background:rgba(37,27,64,.7);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.10);border-radius:16px;padding:2rem;box-shadow:0 24px 60px rgba(0,0,0,.4)}
+    .login-title{font-family:'Sora',sans-serif;font-size:1.15rem;font-weight:700;color:#fff;margin-bottom:.4rem}
+    .login-desc{font-size:.8rem;color:#9A8FC0;margin-bottom:1.5rem}
+    .fg{display:flex;flex-direction:column;gap:.4rem;margin-bottom:1.1rem}
+    label{font-size:.75rem;font-weight:600;color:#B4A9D6}
+    input{background:rgba(22,15,38,.65);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:.7rem .95rem;color:#fff;font-family:'DM Sans',sans-serif;font-size:.88rem;outline:none;transition:border-color .2s,box-shadow .2s;width:100%}
+    input:focus{border-color:#7C3AED;box-shadow:0 0 0 3px rgba(124,58,237,.25)}
+    input::placeholder{color:#6E6886}
+    .btn{width:100%;background:linear-gradient(135deg,#7C3AED 0%,#10B981 100%);color:#fff;border:none;padding:.8rem;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:.9rem;font-weight:700;cursor:pointer;transition:filter .2s,transform .05s;margin-top:.5rem}
+    .btn:hover{filter:brightness(1.08)}
+    .btn:active{transform:translateY(1px)}
+    .btn:disabled{background:#3A2F55;cursor:not-allowed;filter:none}
+    .error{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);color:#FCA5A5;padding:.6rem .9rem;border-radius:10px;font-size:.8rem;margin-top:.8rem;display:none}
+    .error.show{display:block}
+    .hint{text-align:center;margin-top:1.1rem;font-size:.72rem;color:#6E6886}
+  </style>
+</head>
+<body>
+<div class="login-box">
+  <div class="login-logo">
+    <div class="logo-icon">V</div>
+    <div class="logo-name">VESTRA</div>
+    <div class="logo-sub">Aurora Console</div>
+  </div>
+  <div class="login-card">
+    <div class="login-title">Tizimga kirish</div>
+    <div class="login-desc">CRM boshqaruv paneliga kirish uchun ma'lumotlarni kiriting</div>
+    <div class="fg">
+      <label>Email manzil</label>
+      <input type="email" id="email" placeholder="nodir@gmail.com"/>
+    </div>
+    <div class="fg">
+      <label>Parol</label>
+      <input type="password" id="pass" placeholder="••••••••"/>
+    </div>
+    <button class="btn" id="loginBtn">Kirish</button>
+    <div class="error" id="err"></div>
+    <div class="hint">nodir@gmail.com / univernodir</div>
+  </div>
+</div>
+<script>
+if(localStorage.getItem('vestra_token')) window.location.href='/admin/dashboard.html';
+const emailEl=document.getElementById('email'),passEl=document.getElementById('pass');
+const btn=document.getElementById('loginBtn'),errEl=document.getElementById('err');
+async function login(){
+  const email=emailEl.value.trim(),password=passEl.value;
+  if(!email||!password){show('Email va parolni kiriting');return;}
+  btn.disabled=true;btn.textContent='Kirish...';errEl.classList.remove('show');
+  try{
+    const r=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password})});
+    const d=await r.json();
+    if(!r.ok){show(d.error||'Noto\'g\'ri ma\'lumotlar');return;}
+    localStorage.setItem('vestra_token',d.token);
+    localStorage.setItem('vestra_name',d.name||'Admin');
+    window.location.href='/admin/dashboard.html';
+  }catch{show('Server bilan bog\'lanib bo\'lmadi');}
+  finally{btn.disabled=false;btn.textContent='Kirish';}
+}
+function show(m){errEl.textContent=m;errEl.classList.add('show');}
+btn.addEventListener('click',login);
+document.addEventListener('keydown',e=>{if(e.key==='Enter')login();});
+</script>
+</body>
+</html>

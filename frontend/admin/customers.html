@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>VESTRA · Mijozlar</title>
+  <link rel="stylesheet" href="main.css"/>
+</head>
+<body>
+  <main class="wrap">
+    <div class="page-head">
+      <div>
+        <div class="page-title">Mijozlar</div>
+        <div class="page-sub" id="countSub">Yuklanmoqda…</div>
+      </div>
+      <div class="head-tools">
+        <div class="search-bar"><span>⌕</span><input id="q" placeholder="Kompaniya yoki telefon…"/></div>
+        <select id="fType" class="form-select">
+          <option value="">Barcha turlar</option><option value="vip">VIP</option>
+          <option value="corporate">Korporativ</option><option value="retail">Chakana</option>
+        </select>
+        <button class="btn btn-primary" onclick="openNew()">+ Yangi mijoz</button>
+      </div>
+    </div>
+    <div class="grid-cards" id="grid"><div class="empty-state">Yuklanmoqda…</div></div>
+  </main>
+
+  <div class="modal-overlay" id="modal">
+    <div class="modal">
+      <div class="modal-header"><div class="modal-title" id="mTitle">Yangi mijoz</div><button class="modal-close" onclick="closeM()">✕</button></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Kompaniya nomi *</label><input class="form-input" id="fName" placeholder="Style Market MChJ"/></div>
+        <div class="form-group"><label class="form-label">Aloqa shaxsi</label><input class="form-input" id="fContact" placeholder="Ism Familiya"/></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Telefon</label><input class="form-input" id="fPhone" placeholder="+998 90 123 45 67"/></div>
+        <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="fEmail" type="email" placeholder="info@company.uz"/></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Shahar</label><input class="form-input" id="fCity" placeholder="Toshkent"/></div>
+        <div class="form-group"><label class="form-label">Tur</label>
+          <select class="form-select" id="fTypeM"><option value="retail">Chakana</option><option value="corporate">Korporativ</option><option value="vip">VIP</option></select></div>
+      </div>
+      <div class="form-group"><label class="form-label">Holat</label>
+        <select class="form-select" id="fStatus"><option value="active">Faol</option><option value="inactive">Nofaol</option></select></div>
+      <div class="form-group"><label class="form-label">Izoh</label><textarea class="form-textarea" id="fNotes" placeholder="Qo'shimcha ma'lumot…"></textarea></div>
+      <div class="modal-footer"><button class="btn btn-ghost" onclick="closeM()">Bekor qilish</button><button class="btn btn-primary" onclick="save()">Saqlash</button></div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+  mountNav('customers');
+  let all=[], editId=null;
+  const M=document.getElementById('modal');
+  const TYPE={vip:'VIP',corporate:'Korporativ',retail:'Chakana'}, ST={active:'Faol',inactive:'Nofaol'};
+
+  async function load(){ const r=await api('/api/customers'); if(!r)return; all=await r.json(); render(); }
+
+  function render(){
+    const q=document.getElementById('q').value.toLowerCase(), t=document.getElementById('fType').value;
+    const list=all.filter(c=>{
+      if(q && !c.company_name.toLowerCase().includes(q) && !(c.phone||'').includes(q)) return false;
+      if(t && c.type!==t) return false; return true;
+    });
+    document.getElementById('countSub').textContent=list.length+' ta mijoz';
+    document.getElementById('grid').innerHTML = list.length ? list.map(c=>`
+      <div class="customer-card">
+        <div class="cust-head">
+          <div><div class="cust-name">${esc(c.company_name)}</div><div class="cust-type">${TYPE[c.type]||c.type}</div></div>
+          <span class="badge ${c.status}">${ST[c.status]||c.status}</span>
+        </div>
+        <div class="cust-info">
+          ${c.phone?`<div class="cust-row">☏ <span>${esc(c.phone)}</span></div>`:''}
+          ${c.email?`<div class="cust-row">✉ <span>${esc(c.email)}</span></div>`:''}
+          ${c.city?`<div class="cust-row">⌖ <span>${esc(c.city)}</span></div>`:''}
+          ${c.contact_name?`<div class="cust-row">◉ <span>${esc(c.contact_name)}</span></div>`:''}
+        </div>
+        <div class="cust-foot">
+          <div><div class="text-muted" style="font-size:.68rem">Buyurtmalar</div><div class="cust-stat-val">${c.order_count} ta · ${money(c.total_spent)}</div></div>
+          <div class="cust-actions">
+            <button class="btn btn-ghost btn-icon btn-sm" onclick="openEdit(${c.id})" title="Tahrirlash">✎</button>
+            <button class="btn btn-danger btn-icon btn-sm" onclick="del(${c.id})" title="O'chirish">✕</button>
+          </div>
+        </div>
+      </div>`).join('') : '<div class="empty-state">Mijoz topilmadi</div>';
+  }
+
+  function openNew(){ editId=null; document.getElementById('mTitle').textContent='Yangi mijoz';
+    ['fName','fContact','fPhone','fEmail','fCity','fNotes'].forEach(id=>document.getElementById(id).value=''); fTypeM.value='retail'; fStatus.value='active'; M.classList.add('open'); }
+  function openEdit(id){ const c=all.find(x=>x.id===id); if(!c)return; editId=id; document.getElementById('mTitle').textContent='Tahrirlash';
+    fName.value=c.company_name||''; fContact.value=c.contact_name||''; fPhone.value=c.phone||''; fEmail.value=c.email||''; fCity.value=c.city||''; fTypeM.value=c.type||'retail'; fStatus.value=c.status||'active'; fNotes.value=c.notes||''; M.classList.add('open'); }
+  function closeM(){ M.classList.remove('open'); }
+
+  async function save(){
+    const body={company_name:fName.value.trim(),contact_name:fContact.value.trim(),phone:fPhone.value.trim(),email:fEmail.value.trim(),city:fCity.value.trim(),type:fTypeM.value,status:fStatus.value,notes:fNotes.value.trim()};
+    if(!body.company_name){ toast('Kompaniya nomini kiriting','error'); return; }
+    const r=await api(editId?`/api/customers/${editId}`:'/api/customers',{method:editId?'PUT':'POST',body:JSON.stringify(body)});
+    if(r&&r.ok){ closeM(); toast('Saqlandi'); load(); }
+  }
+  async function del(id){ if(!confirm("Mijozni o'chirasizmi?"))return; const r=await api(`/api/customers/${id}`,{method:'DELETE'}); if(r&&r.ok){ toast("O'chirildi"); load(); } }
+
+  document.getElementById('q').addEventListener('input',render);
+  document.getElementById('fType').addEventListener('change',render);
+  M.addEventListener('click',e=>{ if(e.target===M) closeM(); });
+  load();
+  </script>
+</body>
+</html>

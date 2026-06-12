@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>VESTRA · Mahsulotlar</title>
+  <link rel="stylesheet" href="main.css"/>
+</head>
+<body>
+  <main class="wrap">
+    <div class="page-head">
+      <div>
+        <div class="page-title">Mahsulotlar katalogi</div>
+        <div class="page-sub" id="countSub">Yuklanmoqda…</div>
+      </div>
+      <div class="head-tools">
+        <div class="search-bar"><span>⌕</span><input id="q" placeholder="Nom yoki kategoriya…"/></div>
+        <select id="fCat" class="form-select">
+          <option value="">Barcha kategoriyalar</option>
+          <option>T-Shirts</option><option>Shirts</option><option>Trousers</option><option>Jeans</option>
+          <option>Jackets</option><option>Coats</option><option>Dresses</option><option>Knitwear</option>
+          <option>Hoodies</option><option>Sportswear</option>
+        </select>
+        <button class="btn btn-primary" onclick="openNew()">+ Yangi mahsulot</button>
+      </div>
+    </div>
+    <div class="grid-cards" id="grid"><div class="empty-state">Yuklanmoqda…</div></div>
+  </main>
+
+  <div class="modal-overlay" id="modal">
+    <div class="modal">
+      <div class="modal-header"><div class="modal-title" id="mTitle">Yangi mahsulot</div><button class="modal-close" onclick="closeM()">✕</button></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Nomi *</label><input class="form-input" id="fName" placeholder="Classic White Tee"/></div>
+        <div class="form-group"><label class="form-label">Kategoriya *</label>
+          <select class="form-select" id="fCatM"><option>T-Shirts</option><option>Shirts</option><option>Trousers</option><option>Jeans</option><option>Jackets</option><option>Coats</option><option>Dresses</option><option>Knitwear</option><option>Hoodies</option><option>Sportswear</option></select></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Narx (£) *</label><input class="form-input" id="fPrice" type="number" step="0.01" min="0" placeholder="29.99"/></div>
+        <div class="form-group"><label class="form-label">Ombor miqdori *</label><input class="form-input" id="fStock" type="number" min="0" placeholder="100"/></div>
+      </div>
+      <div class="form-group"><label class="form-label">Tavsif</label><textarea class="form-textarea" id="fDesc" placeholder="Mahsulot haqida…"></textarea></div>
+      <div class="form-group"><label class="form-label">Rasm URL</label><input class="form-input" id="fImg" placeholder="https://…"/></div>
+      <div class="modal-footer"><button class="btn btn-ghost" onclick="closeM()">Bekor qilish</button><button class="btn btn-primary" onclick="save()">Saqlash</button></div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+  mountNav('products');
+  let all=[], editId=null;
+  const M=document.getElementById('modal');
+
+  async function load(){ const r=await api('/api/products'); if(!r)return; all=await r.json(); render(); }
+
+  function render(){
+    const q=document.getElementById('q').value.toLowerCase(), cat=document.getElementById('fCat').value;
+    const list=all.filter(p=>{
+      if(q && !p.name.toLowerCase().includes(q) && !p.category.toLowerCase().includes(q)) return false;
+      if(cat && p.category!==cat) return false; return true;
+    });
+    document.getElementById('countSub').textContent=list.length+' ta mahsulot';
+    document.getElementById('grid').innerHTML = list.length ? list.map(p=>`
+      <div class="product-card">
+        ${p.image_url?`<img class="product-img" src="${esc(p.image_url)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'product-img',style:'display:grid;place-items:center;font-size:2rem'}))">`:`<div class="product-img" style="display:grid;place-items:center;font-size:2rem">◰</div>`}
+        ${+p.stock<=20?`<div class="tag-low"><span class="badge cancelled">Kam qoldi</span></div>`:''}
+        <div class="product-body">
+          <div class="product-name">${esc(p.name)}</div>
+          <div class="product-cat">${esc(p.category)}</div>
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div class="product-price">£${parseFloat(p.price).toFixed(2)}</div>
+            <div class="product-stock ${+p.stock<=20?'stock-low':''}">Stok: ${p.stock}</div>
+          </div>
+          <div class="product-actions">
+            <button class="btn btn-ghost btn-sm" style="flex:1" onclick="openEdit(${p.id})">Tahrirlash</button>
+            <button class="btn btn-danger btn-icon btn-sm" onclick="del(${p.id})">✕</button>
+          </div>
+        </div>
+      </div>`).join('') : '<div class="empty-state">Mahsulot topilmadi</div>';
+  }
+
+  function openNew(){ editId=null; document.getElementById('mTitle').textContent='Yangi mahsulot';
+    ['fName','fPrice','fStock','fDesc','fImg'].forEach(id=>document.getElementById(id).value=''); document.getElementById('fCatM').value='T-Shirts'; M.classList.add('open'); }
+  function openEdit(id){ const p=all.find(x=>x.id===id); if(!p)return; editId=id; document.getElementById('mTitle').textContent='Tahrirlash';
+    fName.value=p.name||''; fCatM.value=p.category||'T-Shirts'; fPrice.value=p.price||''; fStock.value=p.stock||''; fDesc.value=p.description||''; fImg.value=p.image_url||''; M.classList.add('open'); }
+  function closeM(){ M.classList.remove('open'); }
+
+  async function save(){
+    const body={name:fName.value.trim(),category:fCatM.value,price:parseFloat(fPrice.value),stock:parseInt(fStock.value||0),description:fDesc.value.trim(),image_url:fImg.value.trim()};
+    if(!body.name||isNaN(body.price)){ toast('Nom va narxni kiriting','error'); return; }
+    const r=await api(editId?`/api/products/${editId}`:'/api/products',{method:editId?'PUT':'POST',body:JSON.stringify(body)});
+    if(r&&r.ok){ closeM(); toast('Saqlandi'); load(); }
+  }
+  async function del(id){ if(!confirm("Mahsulotni o'chirasizmi?"))return; const r=await api(`/api/products/${id}`,{method:'DELETE'}); if(r&&r.ok){ toast("O'chirildi"); load(); } }
+
+  document.getElementById('q').addEventListener('input',render);
+  document.getElementById('fCat').addEventListener('change',render);
+  M.addEventListener('click',e=>{ if(e.target===M) closeM(); });
+  load();
+  </script>
+</body>
+</html>

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>VESTRA · Hisobotlar</title>
+  <link rel="stylesheet" href="main.css"/>
+</head>
+<body>
+  <main class="wrap">
+    <div class="page-head">
+      <div>
+        <div class="page-title">Hisobotlar</div>
+        <div class="page-sub">Sotuv tahlili va statistikasi</div>
+      </div>
+      <div class="head-tools"><button class="btn btn-ghost btn-sm" onclick="load()">↻ Yangilash</button></div>
+    </div>
+
+    <div class="bento">
+      <section class="tile c3"><div class="tile-ico">£</div><div class="tile-label">Umumiy daromad</div><div class="tile-num" id="rRev">—</div><div class="tile-foot" id="rOrders">—</div></section>
+      <section class="tile c3"><div class="tile-ico">◷</div><div class="tile-label">O'rtacha chek</div><div class="tile-num" id="rAvg">—</div><div class="tile-foot">bir buyurtmaga</div></section>
+      <section class="tile c3"><div class="tile-ico">◉</div><div class="tile-label">Mijozlar</div><div class="tile-num" id="rCust">—</div><div class="tile-foot">faol kompaniya</div></section>
+      <section class="tile c3"><div class="tile-ico">⏳</div><div class="tile-label">Kutilayotgan</div><div class="tile-num" id="rPend">—</div><div class="tile-foot" id="rDel">—</div></section>
+
+      <section class="tile c7"><div class="tile-h"><h3>Oylik daromad</h3><span class="sub">so'nggi 6 oy</span></div><div id="barEl"><span class="text-muted">Yuklanmoqda…</span></div></section>
+      <section class="tile c5"><div class="tile-h"><h3>Buyurtmalar holati</h3></div><div class="donut-wrap" id="donutEl"><span class="text-muted">Yuklanmoqda…</span></div></section>
+
+      <section class="tile c6"><div class="tile-h"><h3>Top mahsulotlar</h3><span class="sub">daromad bo'yicha</span></div><div id="prodEl"></div></section>
+      <section class="tile c6"><div class="tile-h"><h3>Kategoriyalar</h3><span class="sub">ulush bo'yicha</span></div><div id="catEl"></div></section>
+    </div>
+  </main>
+
+  <script src="app.js"></script>
+  <script>
+  mountNav('reports');
+  const CAT_COLORS=['#7C3AED','#10B981','#60A5FA','#A78BFA','#FBBF24','#F87171'];
+
+  function donut(statuses){
+    const total=statuses.reduce((s,r)=>s+ +r.count,0)||1;
+    const R=46,CX=58,CY=58,SW=13,C=2*Math.PI*R; let paths='',off=0;
+    statuses.forEach(s=>{ const pct=(+s.count)/total,dash=pct*C,col=STATUS_COLORS[s.status]||'#888';
+      paths+=`<circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="${col}" stroke-width="${SW}" stroke-linecap="round" stroke-dasharray="${dash} ${C-dash}" stroke-dashoffset="${-off*C}" transform="rotate(-90 ${CX} ${CY})"/>`; off+=pct; });
+    const legend=statuses.map(s=>{ const col=STATUS_COLORS[s.status]||'#888',pct=Math.round((+s.count)/total*100);
+      return `<div class="legend-row"><span class="legend-l"><span class="legend-dot" style="background:${col}"></span>${STATUS_UZ[s.status]||s.status}</span><span class="legend-r">${s.count} · ${pct}%</span></div>`; }).join('');
+    return `<svg width="116" height="116" viewBox="0 0 116 116"><circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="${SW}"/>${paths}
+      <text x="${CX}" y="${CY+2}" text-anchor="middle" fill="#ECE9F7" font-size="20" font-family="Space Mono" font-weight="700">${total}</text>
+      <text x="${CX}" y="${CY+17}" text-anchor="middle" fill="#6E6890" font-size="8" font-family="DM Sans" letter-spacing="1">JAMI</text></svg><div class="legend">${legend}</div>`;
+  }
+  function bars(months){
+    if(!months.length) return '<span class="text-muted">Ma\'lumot yo\'q</span>';
+    const max=Math.max(...months.map(m=>+m.revenue));
+    return '<div class="bar-chart">'+months.map(m=>{ const h=max>0?Math.max(+m.revenue/max*100,3):3;
+      return `<div class="bar-col"><div class="bar-fill" style="height:${h}%"><div class="bar-tip">${m.month}: ${money(m.revenue)}</div></div><div class="bar-lbl">${m.month.split(' ')[0]}</div></div>`; }).join('')+'</div>';
+  }
+
+  async function load(){
+    const r=await api('/api/reports/summary'); if(!r)return;
+    const d=await r.json(), t=d.totals;
+    rRev.textContent=money(t.total_revenue); rOrders.textContent=t.total_orders+' buyurtma';
+    rAvg.textContent=money(t.avg_order_value); rCust.textContent=t.total_customers;
+    rPend.textContent=t.pending_orders; rDel.textContent=t.delivered_orders+' yetkazilgan';
+
+    barEl.innerHTML=bars(d.monthlyRevenue);
+    donutEl.innerHTML=donut(d.statusBreakdown);
+
+    const maxR=Math.max(...d.topProducts.map(p=>+p.revenue))||1;
+    prodEl.innerHTML=d.topProducts.map((p,i)=>`
+      <div class="rank-row"><div class="rank-no ${i===0?'top':''}">${i+1}</div>
+        <div class="rank-mid"><div class="rank-name">${esc(p.name)}</div>
+          <div class="rank-bar"><i style="width:${(+p.revenue/maxR*100).toFixed(0)}%"></i></div></div>
+        <div class="rank-val">${money(p.revenue)}</div></div>`).join('');
+
+    const maxC=Math.max(...d.categoryRevenue.map(c=>+c.revenue))||1;
+    catEl.innerHTML=d.categoryRevenue.map((c,i)=>`
+      <div style="margin-bottom:.85rem">
+        <div style="display:flex;justify-content:space-between;font-size:.8rem;margin-bottom:.35rem">
+          <span style="font-weight:500">${esc(c.category)}</span>
+          <span class="text-muted font-mono" style="font-size:.74rem">${money(c.revenue)} · ${c.units_sold} ta</span></div>
+        <div class="rank-bar" style="height:6px"><i style="width:${(+c.revenue/maxC*100).toFixed(0)}%;background:${CAT_COLORS[i%CAT_COLORS.length]}"></i></div>
+      </div>`).join('');
+  }
+  load();
+  </script>
+</body>
+</html>
