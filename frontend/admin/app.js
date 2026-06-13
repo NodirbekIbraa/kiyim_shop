@@ -18,7 +18,7 @@ const ICON = {
 const NAV = [
   ['dashboard','Dashboard','dashboard.html'],
   ['orders','Buyurtmalar','orders.html'],
-  ['customers','Mijoz','customers.html'],
+  ['customers','Mijozlar','customers.html'],
   ['products','Mahsulotlar','products.html'],
   ['reports','Hisobotlar','reports.html'],
 ];
@@ -32,7 +32,7 @@ function mountNav(active) {
   <header class="topnav">
     <div class="nav-brand">
       <div class="brand-mark">N</div>
-      <div class="brand-word">VESTRA<span>Aurora Console</span></div>
+      <div class="brand-word">Nodirbek<span>Aurora Console</span></div>
     </div>
     <nav class="nav-links">${links}</nav>
     <div class="nav-user">
